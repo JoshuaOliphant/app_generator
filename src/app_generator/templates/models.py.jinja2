@@ -1,0 +1,29 @@
+"""Generated Pydantic models from OpenAPI schemas."""
+
+from typing import Optional, List, Any
+from pydantic import BaseModel
+
+{%- macro python_type(openapi_type) -%}
+{%- if openapi_type == 'string' -%}str{%- elif openapi_type == 'integer' -%}int{%- elif openapi_type == 'number' -%}float{%- elif openapi_type == 'boolean' -%}bool{%- elif openapi_type == 'array' -%}List{%- else -%}Any{%- endif -%}
+{%- endmacro %}
+
+{% for model_name, schema in schemas.items() if not schema.get('allOf') %}
+class {{ model_name }}(BaseModel):
+    """{{ schema.get('description', 'Model for ' + model_name) }}"""
+    {%- for prop_name, prop in schema.get('properties', {}).items() %}
+    {{ prop_name }}: {%- if prop_name not in schema.get('required', []) %} Optional[{{ python_type(prop.type) }}] = None{% else %} {{ python_type(prop.type) }} = ...{% endif %}
+    {%- endfor %}
+
+{% endfor %}
+{%- for model_name, schema in schemas.items() if schema.get('allOf') %}
+class {{ model_name }}({% for parent in schema.allOf if parent.get('$ref') %}{{ parent['$ref'].split('/')[-1] }}{% endfor %}):
+    """{{ schema.get('description', 'Model for ' + model_name) }}"""
+    {%- for subschema in schema.allOf %}
+    {%- if subschema.get('properties') %}
+    {%- for prop_name, prop in subschema.properties.items() %}
+    {{ prop_name }}: {%- if prop_name not in subschema.get('required', []) %} Optional[{{ python_type(prop.type) }}] = None{% else %} {{ python_type(prop.type) }} = ...{% endif %}
+    {%- endfor %}
+    {%- endif %}
+    {%- endfor %}
+
+{% endfor %}

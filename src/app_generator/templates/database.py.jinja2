@@ -1,0 +1,84 @@
+"""Generated SQLite database integration."""
+
+import logging
+import sqlite3
+from typing import Dict, Any, List
+
+logger = logging.getLogger(__name__)
+
+class DatabaseTool:
+    """Database tool for SQLite operations."""
+
+    def __init__(self):
+        """Initialize database connection."""
+        logger.info("Initializing DatabaseTool")
+        self.db_path = "{{ database_config.connection.database }}"
+        self.conn = sqlite3.connect(self.db_path)
+        self.conn.row_factory = sqlite3.Row
+        self._init_db()
+
+    def _init_db(self) -> None:
+        """Initialize database tables."""
+        logger.info("Initializing database tables")
+
+        {% for model in database_config.models %}
+        # Create {{ model.name }} table
+        create_{{ model.table }} = """
+        CREATE TABLE IF NOT EXISTS {{ model.table }} (
+            {% for column in model.columns %}
+            {{ column.name }} {{ column.type | upper }}
+            {%- if column.primary_key %} PRIMARY KEY{% endif %}
+            {%- if column.autoincrement %} AUTOINCREMENT{% endif %}
+            {%- if not column.nullable %} NOT NULL{% endif %}
+            {%- if not loop.last %},{% endif %}
+            {% endfor %}
+        )
+        """
+        logger.debug(f"Creating table with query: {create_{{ model.table }}}")
+        self.conn.execute(create_{{ model.table }})
+        {% endfor %}
+
+        self.conn.commit()
+        logger.info("Database initialization complete")
+
+    async def execute_operation(self, operation: Dict[str, Any]) -> Any:
+        """Execute a database operation based on the AI's decision."""
+        op_type = operation["operation"]
+        table = operation["table"]
+        data = operation.get("data")
+
+        if op_type == "insert":
+            return self.insert(table, data)
+        elif op_type == "get_by_id":
+            return self.get_by_id(table, data["id"])
+        elif op_type == "list_all":
+            return self.list_all(table)
+        else:
+            raise ValueError(f"Unknown operation type: {op_type}")
+
+    def insert(self, table: str, data: dict) -> dict:
+        """Insert a new record."""
+        logger.info(f"Inserting data into {table}: {data}")
+        columns = ', '.join(data.keys())
+        placeholders = ', '.join(['?' for _ in data])
+        query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
+        cursor = self.conn.execute(query, list(data.values()))
+        self.conn.commit()
+        return self.get_by_id(table, cursor.lastrowid)
+
+    def get_by_id(self, table: str, id: int) -> dict:
+        """Get a record by ID."""
+        logger.info(f"Getting record from {table} with id: {id}")
+        query = f"SELECT * FROM {table} WHERE id = ?"
+        cursor = self.conn.execute(query, (id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+    def list_all(self, table: str) -> List[dict]:
+        """List all records from a table."""
+        logger.info(f"Listing all records from {table}")
+        query = f"SELECT * FROM {table}"
+        cursor = self.conn.execute(query)
+        results = [dict(row) for row in cursor.fetchall()]
+        logger.debug(f"Found {len(results)} records")
+        return results

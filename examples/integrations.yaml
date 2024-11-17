@@ -1,0 +1,22 @@
+version: 1.0
+database:
+  type: sqlite
+  connection:
+    database: products.db
+  models:
+    - name: Product
+      table: products
+      columns:
+        - name: id
+          type: integer
+          primary_key: true
+          autoincrement: true
+        - name: name
+          type: string
+          nullable: false
+        - name: price
+          type: float
+          nullable: false
+        - name: description
+          type: string
+          nullable: true
