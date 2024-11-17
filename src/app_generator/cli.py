@@ -1,5 +1,3 @@
-"""Command line interface for generating AI-powered applications."""
-
 import click
 from pathlib import Path
 import yaml
@@ -32,19 +30,11 @@ def generate(output_dir: str, openapi: str, integrations: str, name: str):
     integrations_path = Path(integrations)
 
     try:
-        # Only read the integrations file
-        with integrations_path.open() as f:
-            integrations_spec = yaml.safe_load(f)
 
-        # Basic validation
-        if 'database' not in integrations_spec or integrations_spec['database']['type'] != 'sqlite':
-            raise ValueError("Only SQLite database is supported in this version")
-
-        # Create generator with the file path instead of parsed content
         generator = AppGenerator(
             name=name,
-            openapi_path=openapi_path,  # Pass the path instead of parsed content
-            integrations_spec=integrations_spec,
+            openapi_path=openapi_path,
+            integrations_path=integrations_path,
             output_dir=output_path
         )
         generator.generate()

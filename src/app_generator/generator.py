@@ -1,5 +1,3 @@
-"""Application generator that creates AI-powered FastAPI applications."""
-
 from pathlib import Path
 from typing import Dict, Any
 from jinja2 import Environment, FileSystemLoader
@@ -16,14 +14,22 @@ class AppGenerator:
     def __init__(
         self,
         name: str,
-        openapi_path: Path,  # Changed from openapi_spec to openapi_path
-        integrations_spec: Dict[str, Any],
+        openapi_path: Path,
+        integrations_path: Path,
         output_dir: Path
     ):
         self.name = name
         self.openapi_path = openapi_path
-        self.integrations_spec = integrations_spec
+        self.integrations_path = integrations_path
         self.output_dir = output_dir
+
+        # Read the integrations file
+        with integrations_path.open() as f:
+            self.integrations_spec = yaml.safe_load(f)
+
+        # Basic validation
+        if 'database' not in self.integrations_spec or self.integrations_spec['database']['type'] != 'sqlite':
+            raise ValueError("Only SQLite database is supported in this version")
 
         # Load OpenAPI spec for other templates
         with openapi_path.open() as f:
@@ -50,7 +56,7 @@ class AppGenerator:
         # Generate models.py using datamodel-code-generator
         models_path = app_dir / 'models.py'
         generate(
-            input_=self.openapi_path,  # Pass the file path directly
+            input_=self.openapi_path,
             input_file_type=InputFileType.OpenAPI,
             output=models_path
         )
